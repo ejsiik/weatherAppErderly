@@ -17,7 +17,6 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.core.content.ContextCompat.getSystemService
 import androidx.navigation.findNavController
 import com.example.weatherapp.Api.ApiUtilities
 import com.example.weatherapp.Models.WeatherModel
@@ -59,7 +58,7 @@ class weather_normal : Fragment() {
 
         _binding = FragmentWeatherNormalBinding.inflate(inflater, container, false)
         val view = binding.root
-        getCurrentLocation()
+        //getCurrentLocation()
 
         binding.citySearch.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
@@ -83,16 +82,42 @@ class weather_normal : Fragment() {
             isElderlyMode = !isElderlyMode
         }
 
+        val savedCityName = getSavedCityName()
+        if (savedCityName != null) {
+            binding.citySearch.setText(savedCityName)
+            getCityWeather(savedCityName)
+        } else {
+            getCurrentLocation()
+        }
+
         return view
     }
 
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        val savedCityName = getSavedCityName()
+        if (savedCityName != null) {
+            binding.citySearch.setText(savedCityName)
+            getCityWeather(savedCityName)
+        }
         //navigation to switch screen look to elderly users screen
         binding.elderlyMode.setOnClickListener{ view ->
             view.findNavController().navigate(R.id.action_weather_normal_to_weather_old)
         }
+    }
+
+    private fun saveCityName(cityName: String) {
+        val sharedPref = requireActivity().getPreferences(Context.MODE_PRIVATE) ?: return
+        with (sharedPref.edit()) {
+            putString(getString(R.string.saved_city_name_key), cityName)
+            apply()
+        }
+    }
+
+    private fun getSavedCityName(): String? {
+        val sharedPref = requireActivity().getPreferences(Context.MODE_PRIVATE)
+        return sharedPref.getString(getString(R.string.saved_city_name_key), null)
     }
 
 
@@ -107,6 +132,7 @@ class weather_normal : Fragment() {
                     if (response.isSuccessful){
                         response.body()?.let {
                             setData(it)
+                            saveCityName(city) // Save the city name
                         }
                     } else {
                         Toast.makeText(requireActivity(), "No City Found", Toast.LENGTH_SHORT).show()

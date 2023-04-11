@@ -59,7 +59,7 @@ class weather_old : Fragment() {
 
         _binding = FragmentWeatherOldBinding.inflate(inflater, container, false)
         val view = binding.root
-        getCurrentLocation()
+        //getCurrentLocation()
 
         binding.citySearch.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
@@ -82,16 +82,41 @@ class weather_old : Fragment() {
         binding.elderlyMode.setOnClickListener {
             isElderlyMode = !isElderlyMode
         }
+
+        val savedCityName = getSavedCityName()
+        if (savedCityName != null) {
+            binding.citySearch.setText(savedCityName)
+            getCityWeather(savedCityName)
+        } else {
+            getCurrentLocation()
+        }
         return view
     }
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        val savedCityName = getSavedCityName()
+        if (savedCityName != null) {
+            binding.citySearch.setText(savedCityName)
+            getCityWeather(savedCityName)
+        }
         //navigation to switch screen look to elderly users screen
         binding.elderlyMode.setOnClickListener{ view ->
             view.findNavController().navigate(R.id.action_weather_old_to_weather_normal)
         }
     }
 
+    private fun saveCityName(cityName: String) {
+        val sharedPref = requireActivity().getPreferences(Context.MODE_PRIVATE) ?: return
+        with (sharedPref.edit()) {
+            putString(getString(R.string.saved_city_name_key), cityName)
+            apply()
+        }
+    }
+
+    private fun getSavedCityName(): String? {
+        val sharedPref = requireActivity().getPreferences(Context.MODE_PRIVATE)
+        return sharedPref.getString(getString(R.string.saved_city_name_key), null)
+    }
     private fun getCityWeather(city : String){
 
         ApiUtilities.getApiInterface()?.getCityWeatherData(city, apiKey)?.enqueue(
@@ -103,6 +128,7 @@ class weather_old : Fragment() {
                     if (response.isSuccessful){
                         response.body()?.let {
                             setData(it)
+                            saveCityName(city) // Save the city name
                         }
                     }else {
                         Toast.makeText(requireActivity(), "No City Found", Toast.LENGTH_LONG).show()
