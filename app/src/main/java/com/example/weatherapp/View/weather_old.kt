@@ -13,15 +13,15 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
+import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.navigation.findNavController
 import com.example.weatherapp.Api.ApiUtilities
 import com.example.weatherapp.Models.WeatherModel
 import com.example.weatherapp.R
-import com.example.weatherapp.databinding.FragmentWeatherNormalBinding
 import com.example.weatherapp.databinding.FragmentWeatherOldBinding
-import com.example.weatherapp.databinding.FragmentWeatherOldBindingImpl
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import retrofit2.Call
@@ -65,6 +65,12 @@ class weather_old : Fragment() {
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
                 getCityWeather(binding.citySearch.text.toString())
                 binding.citySearch.clearFocus()
+
+                // Hide the keyboard
+                val context = requireContext()
+                val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+                imm.hideSoftInputFromWindow(binding.citySearch.windowToken, 0)
+                true
                 return@setOnEditorActionListener true
             }
             false
@@ -76,7 +82,6 @@ class weather_old : Fragment() {
         binding.elderlyMode.setOnClickListener {
             isElderlyMode = !isElderlyMode
         }
-
         return view
     }
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -87,9 +92,8 @@ class weather_old : Fragment() {
         }
     }
 
-
     private fun getCityWeather(city : String){
-        //binding.progressBar.visibility = View.VISIBLE
+
         ApiUtilities.getApiInterface()?.getCityWeatherData(city, apiKey)?.enqueue(
             object : Callback<WeatherModel> {
                 override fun onResponse(
@@ -97,13 +101,11 @@ class weather_old : Fragment() {
                     response: Response<WeatherModel>
                 ) {
                     if (response.isSuccessful){
-                        //binding.progressBar.visibility = View.GONE
                         response.body()?.let {
                             setData(it)
                         }
                     }else {
-                        //Toast.makeText(this@weather_normal, "No City Found", Toast.LENGTH_SHORT).show()
-                        //binding.progressBar.visibility = View.GONE
+                        Toast.makeText(requireActivity(), "No City Found", Toast.LENGTH_LONG).show()
                     }
                 }
                 override fun onFailure(call: Call<WeatherModel>, t: Throwable) {
@@ -121,7 +123,6 @@ class weather_old : Fragment() {
                     response: Response<WeatherModel>
                 ) {
                     if (response.isSuccessful) {
-                        //binding.progressBar.visibility = View.GONE
                         response.body()?.let {
                             setData(it)
                         }
@@ -217,12 +218,14 @@ class weather_old : Fragment() {
         if (requestCode == LOCATION_REQUEST_CODE) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED){
                 getCurrentLocation()
-            }else {
+            } else {
+                Toast.makeText(requireContext(), "Location permission denied", Toast.LENGTH_LONG).show()
             }
         }
     }
 
     private fun setData (body : WeatherModel){
+
         binding.apply {
             val currentDate = SimpleDateFormat("dd/MM/yyyy hh:mm").format(Date())
             dateTime.text = currentDate.toString()
