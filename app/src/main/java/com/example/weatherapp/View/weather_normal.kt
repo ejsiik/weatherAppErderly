@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.location.Location
 import android.location.LocationManager
 import android.net.ConnectivityManager
@@ -44,7 +45,7 @@ class weather_normal : Fragment() {
     private lateinit var currentLocation : Location
     private lateinit var fusedLocationProviderClient : FusedLocationProviderClient
     private val LOCATION_REQUEST_CODE = 101
-    private val apiKey = "84e0d7446cda7ae84fde1cf9ae957e49"
+    private val apiKey = "YOUR API KEY"
     private var isElderlyMode = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,6 +61,15 @@ class weather_normal : Fragment() {
         // Inflate the layout for this fragment using data binding
         _binding = FragmentWeatherNormalBinding.inflate(inflater, container, false)
         val view = binding.root
+
+        // Set the visibility of the root view to "invisible" to avoid showing the default view
+        view.visibility = View.INVISIBLE
+
+        // Set the background color of the root view to white
+        view.setBackgroundColor(Color.WHITE)
+
+        // Use a loading indicator to show that data is being loaded
+        binding.progressBar.visibility = View.VISIBLE
 
         // Set listener for the city search edit text
         binding.citySearch.setOnEditorActionListener { _, actionId, _ ->
@@ -95,6 +105,9 @@ class weather_normal : Fragment() {
         } else {
             getCurrentLocation()
         }
+
+        // Set the visibility of the root view to "visible" now that the correct view has been inflated
+        view.visibility = View.VISIBLE
 
         return view
     }
@@ -136,6 +149,10 @@ class weather_normal : Fragment() {
         return networkInfo != null && networkInfo.isConnected
     }
 
+    private fun setCityName(cityName: String) {
+        binding.citySearch.setText(cityName)
+    }
+
     // Function to get weather data for a specific city using the OpenWeatherMap API
     private fun getCityWeather(city : String) {
         if (isOnline()) {
@@ -147,9 +164,12 @@ class weather_normal : Fragment() {
                     ) {
                         if (response.isSuccessful) {
                             response.body()?.let {
-                                setData(it)
+                                // Set the city name in the UI
+                                setCityName(it.name)
                                 // Save the city name to shared preferences
-                                saveCityName(city)
+                                saveCityName(it.name)
+                                // Update the UI with the weather data
+                                setData(it)
                             }
                         } else {
                             Toast.makeText(requireActivity(), "No City Found", Toast.LENGTH_SHORT)
@@ -372,6 +392,7 @@ class weather_normal : Fragment() {
                         .getDrawable(requireContext(), R.drawable.unknown_bg)
                 }
             }
+            binding.progressBar.visibility = View.GONE
         }
     }
     private fun k2c(t: Double): Double {

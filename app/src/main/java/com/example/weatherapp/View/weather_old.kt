@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationManager
+import android.net.ConnectivityManager
 import android.os.Bundle
 import android.provider.Settings
 import androidx.fragment.app.Fragment
@@ -42,12 +43,11 @@ class weather_old : Fragment() {
     private lateinit var currentLocation : Location
     private lateinit var fusedLocationProviderClient : FusedLocationProviderClient
     private val LOCATION_REQUEST_CODE = 101
-    private val apiKey = "84e0d7446cda7ae84fde1cf9ae957e49"
+    private val apiKey = "YOUR API KEY"
     private var isElderlyMode = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(requireContext())
     }
 
@@ -59,7 +59,10 @@ class weather_old : Fragment() {
 
         _binding = FragmentWeatherOldBinding.inflate(inflater, container, false)
         val view = binding.root
-        //getCurrentLocation()
+
+        // Set the visibility of the root view to "invisible" to avoid showing the default view
+        view.visibility = View.INVISIBLE
+
 
         binding.citySearch.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
@@ -90,6 +93,10 @@ class weather_old : Fragment() {
         } else {
             getCurrentLocation()
         }
+
+        // Set the visibility of the root view to "visible" now that the correct view has been inflated
+        view.visibility = View.VISIBLE
+
         return view
     }
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -117,27 +124,40 @@ class weather_old : Fragment() {
         val sharedPref = requireActivity().getPreferences(Context.MODE_PRIVATE)
         return sharedPref.getString(getString(R.string.saved_city_name_key), null)
     }
-    private fun getCityWeather(city : String){
 
-        ApiUtilities.getApiInterface()?.getCityWeatherData(city, apiKey)?.enqueue(
-            object : Callback<WeatherModel> {
-                override fun onResponse(
-                    call: Call<WeatherModel>,
-                    response: Response<WeatherModel>
-                ) {
-                    if (response.isSuccessful){
-                        response.body()?.let {
-                            setData(it)
-                            saveCityName(city) // Save the city name
+    private fun isOnline(): Boolean {
+        val connectivityManager = requireContext().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val networkInfo = connectivityManager.activeNetworkInfo
+        return networkInfo != null && networkInfo.isConnected
+    }
+    private fun getCityWeather(city : String){
+        if (isOnline()) {
+            ApiUtilities.getApiInterface()?.getCityWeatherData(city, apiKey)?.enqueue(
+                object : Callback<WeatherModel> {
+                    override fun onResponse(
+                        call: Call<WeatherModel>,
+                        response: Response<WeatherModel>
+                    ) {
+                        if (response.isSuccessful) {
+                            response.body()?.let {
+                                setData(it)
+                                // Save the city name to shared preferences
+                                saveCityName(city)
+                            }
+                        } else {
+                            Toast.makeText(requireActivity(), "No City Found", Toast.LENGTH_SHORT)
+                                .show()
                         }
-                    }else {
-                        Toast.makeText(requireActivity(), "No City Found", Toast.LENGTH_LONG).show()
                     }
-                }
-                override fun onFailure(call: Call<WeatherModel>, t: Throwable) {
-                    TODO("Not yet implemented")
-                }
-            })
+
+                    override fun onFailure(call: Call<WeatherModel>, t: Throwable) {
+                        Toast.makeText(requireActivity(), "Problem appeared", Toast.LENGTH_SHORT)
+                            .show()
+                    }
+                })
+        } else {
+            Toast.makeText(requireContext(), "No internet connection", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun fetchCureentLocationWeather(latitude : String, longitude : String) {
@@ -155,7 +175,7 @@ class weather_old : Fragment() {
                     }
                 }
                 override fun onFailure(call: Call<WeatherModel>, t: Throwable) {
-                    TODO("Not yet implemented")
+                    Toast.makeText(requireActivity(), "Problem appeared", Toast.LENGTH_SHORT).show()
                 }
             })
     }
